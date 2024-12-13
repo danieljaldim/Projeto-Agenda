@@ -1,16 +1,21 @@
-from django.shortcuts import get_object_or_404, render, redirect
+from django.core.paginator import Paginator
 from django.db.models import Q
-from contact.models import Contact
+from django.shortcuts import get_object_or_404, redirect, render
 
+from contact.models import Contact
 
 
 def index(request):
     contacts = Contact.objects \
         .filter(show=True)\
-        .order_by('-id')[10:20]
+        .order_by('-id')
+
+    paginator = Paginator(contacts, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
     context = {
-        'contacts': contacts,
+        'page_obj': page_obj,
         'site_title': 'Contatos - '
     }
 
@@ -20,17 +25,15 @@ def index(request):
         context
     )
 
-def search(request):
-    search_value = request.GET.get('q', '').strip()  # Use get() corretamente
-    
-    if search_value == '':
-        return redirect('contact:index')  # Redireciona se o valor da busca estiver vazio
 
-    print(search_value)
-    
-    # Filtra os contatos com base no valor de busca
+def search(request):
+    search_value = request.GET.get('q', '').strip()
+
+    if search_value == '':
+        return redirect('contact:index')
+
     contacts = Contact.objects \
-        .filter(show=True) \
+        .filter(show=True)\
         .filter(
             Q(first_name__icontains=search_value) |
             Q(last_name__icontains=search_value) |
@@ -38,12 +41,15 @@ def search(request):
             Q(email__icontains=search_value)
         )\
         .order_by('-id')
-    
-    print(contacts.query)  # Mostra a query SQL gerada no terminal (útil para depuração)
-    
+
+    paginator = Paginator(contacts, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        'contacts': contacts,
-        'site_title': 'Search - '
+        'page_obj': page_obj,
+        'site_title': 'Search - ',
+        'search_value': search_value,
     }
 
     return render(
@@ -54,6 +60,7 @@ def search(request):
 
 
 def contact(request, contact_id):
+    # single_contact = Contact.objects.filter(pk=contact_id).first()
     single_contact = get_object_or_404(
         Contact, pk=contact_id, show=True
     )
